@@ -1,0 +1,11 @@
+sample_name:
+ - OV10.DNAnormal.chr17
+
+reference_DNA:
+ - ucsc.hg19.fasta
+ 
+indel_vcf_1000g:
+ - Mills_and_1000G_gold_standard.indels.hg19.sites.vcf
+
+snp_vcf_dbsnp:
+ - dbsnp_138.hg19.vcf 
