@@ -36,6 +36,3 @@ rule VaDiR_summary_report:
             output_dir = config['output_dir'])
 
 
-
-
-#test
