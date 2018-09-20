@@ -1,4 +1,5 @@
 # DNA mapping and refining alignments based on VaDiR
+
 rule R01_fastq_to_ubam:
     #Picard FastqToSam - Converting to uBAM
     # recomended java requirements
@@ -11,7 +12,8 @@ rule R01_fastq_to_ubam:
                          sample = config['sample_name'],
                          input_dir = config['input_dir'])
     params:
-        sample_name = config['sample_name']
+        sample_name = config['sample_name'],
+        output_dir = config['output_dir']
     output:
         output_ubam = expand("{output_dir}/01_ubam/{sample}.ubam",
         sample = config['sample_name'],
@@ -21,12 +23,12 @@ rule R01_fastq_to_ubam:
         output_dir = config['output_dir'])
     shell:
         """
-         /home/rstudio/miniconda3/bin/picard FastqToSam \
+         /opt/miniconda3/bin/picard FastqToSam \
          FASTQ={input.fastqR1} \
          O={output.output_ubam} \
          SAMPLE_NAME={params.sample_name} \
          SORT_ORDER=queryname \
-         TMP_DIR=output/temp_dir \
+         TMP_DIR={params.output_dir}/temp_dir \
          > {log} 2>&1 || (e=$?; cat {log}; exit $e)
         """
 rule R02_mark_adapters:
@@ -36,7 +38,8 @@ rule R02_mark_adapters:
         sample = config['sample_name'],
         output_dir = config['output_dir'])
     params:
-        sample_name = config['sample_name']
+        sample_name = config['sample_name'],
+        output_dir = config['output_dir']
     output:
         sam = expand("{output_dir}/02_mark_adapters/{sample}.unaligned.sam",
         sample = config['sample_name'],
@@ -50,11 +53,11 @@ rule R02_mark_adapters:
         output_dir = config['output_dir'])
     shell:
         """
-         /home/rstudio/miniconda3/bin/picard MarkIlluminaAdapters \
+         /opt/miniconda3/bin/picard MarkIlluminaAdapters \
          I={input.ubam} \
          O={output.sam} \
          M={output.adapter_metrics} \
-         TMP_DIR=output/temp_dir \
+         TMP_DIR={params.output_dir}/temp_dir \
          > {log} 2>&1 || (e=$?; cat {log}; exit $e)
         """
 rule R03_sam_to_interleaved_fastq:
@@ -65,7 +68,8 @@ rule R03_sam_to_interleaved_fastq:
         sample = config['sample_name'],
         output_dir = config['output_dir'])
     params:
-        sample_name = config['sample_name']
+        sample_name = config['sample_name'],
+        output_dir = config['output_dir']
     output:
         interleaved_fastq = expand(
         "{output_dir}/03_interleaved_fastq/{sample}.interleaved.fastq",
@@ -76,14 +80,14 @@ rule R03_sam_to_interleaved_fastq:
         output_dir = config['output_dir'])
     shell:
         """
-         /home/rstudio/miniconda3/bin/picard SamToFastq \
+         /opt/miniconda3/bin/picard SamToFastq \
          I={input.unaligned_sam} \
          FASTQ={output.interleaved_fastq} \
          CLIPPING_ATTRIBUTE=XT \
          CLIPPING_ACTION=2 \
          INTERLEAVE=true \
          NON_PF=true \
-         TMP_DIR=output/temp_dir \
+         TMP_DIR={params.output_dir}/temp_dir \
          > {log} 2>&1 || (e=$?; cat {log}; exit $e)
         """
 rule R04_DNA_bwa_map:
@@ -105,7 +109,7 @@ rule R04_DNA_bwa_map:
         output_dir = config['output_dir'])
     shell:
         """
-        /home/rstudio/miniconda3/bin/bwa mem -M -t 8 {input.reference} \
+        /opt/miniconda3/bin/bwa mem -M -t 8 {input.reference} \
         {input.interleaved_fastq} \
         > {output.mapped_sam} 2> {log} || (e=$?; cat {log}; exit $e)
         """
@@ -129,6 +133,8 @@ rule R05_merged_mapped_and_unampped_dna_reads:
         reference = expand("{input_dir}/refs/{reference}",
                            reference = config['reference_DNA'],
                            input_dir = config['input_dir'])
+    params:
+        output_dir = config['output_dir']
     output:
         merged_mapped_and_unampped_dna_bam = expand(
         "{output_dir}/05_merged_mapped_and_unampped_dna_reads/{sample}.merged.bam",
@@ -139,7 +145,7 @@ rule R05_merged_mapped_and_unampped_dna_reads:
         output_dir = config['output_dir'])
     shell:
         """
-         /home/rstudio/miniconda3/bin/picard MergeBamAlignment \
+         /opt/miniconda3/bin/picard MergeBamAlignment \
          ALIGNED_BAM={input.mapped_sam} \
          UNMAPPED_BAM={input.ubam} \
          OUTPUT={output.merged_mapped_and_unampped_dna_bam} \
@@ -152,7 +158,7 @@ rule R05_merged_mapped_and_unampped_dna_reads:
          MAX_INSERTIONS_OR_DELETIONS=-1 \
          PRIMARY_ALIGNMENT_STRATEGY=MostDistant \
          ATTRIBUTES_TO_RETAIN=XS
-         TMP_DIR=output/temp_dir \
+         TMP_DIR={params.output_dir}/temp_dir \
          > {log} 2>&1 || (e=$?; cat {log}; exit $e)
         """
 rule R06_add_read_groups_to_bam:
@@ -163,7 +169,8 @@ rule R06_add_read_groups_to_bam:
         sample = config['sample_name'],
         output_dir = config['output_dir'])
     params:
-        sample_name = config['sample_name']
+        sample_name = config['sample_name'],
+        output_dir = config['output_dir']
     output:
         bam_with_read_groups = expand(
         "{output_dir}/06_add_read_groups_to_bam/{sample}.bam",
@@ -174,7 +181,7 @@ rule R06_add_read_groups_to_bam:
         output_dir = config['output_dir'])
     shell:
         """
-        /home/rstudio/miniconda3/bin/picard AddOrReplaceReadGroups \
+        /opt/miniconda3/bin/picard AddOrReplaceReadGroups \
         INPUT={input.bam} \
         OUTPUT={output.bam_with_read_groups} \
         SORT_ORDER=coordinate \
@@ -184,7 +191,7 @@ rule R06_add_read_groups_to_bam:
         RGPU="barcode" \
         RGSM={params.sample_name} \
         VALIDATION_STRINGENCY=SILENT \
-        TMP_DIR=output/temp_dir \
+        TMP_DIR={params.output_dir}/temp_dir \
          > {log} 2>&1 || (e=$?; cat {log}; exit $e)
         """
 rule R07_mark_duplicates:
@@ -193,6 +200,8 @@ rule R07_mark_duplicates:
         bam = expand("{output_dir}/06_add_read_groups_to_bam/{sample}.bam",
         sample = config['sample_name'],
         output_dir = config['output_dir'])
+    params:
+        output_dir = config['output_dir']
     output:
         deduped_bam = expand(
         "{output_dir}/07_mark_duplicates/{sample}.deduped.bam",
@@ -207,12 +216,12 @@ rule R07_mark_duplicates:
         output_dir = config['output_dir'])
     shell:
         """
-        /home/rstudio/miniconda3/bin/picard MarkDuplicates \
+        /opt/miniconda3/bin/picard MarkDuplicates \
         INPUT={input.bam} \
         OUTPUT={output.deduped_bam} \
         CREATE_INDEX=true \
         METRICS_FILE={output.mark_duplicate_metrics} \
-        TMP_DIR=output/temp_dir \
+        TMP_DIR={params.output_dir}/temp_dir \
          > {log} 2>&1 || (e=$?; cat {log}; exit $e)
         """
 rule R08_base_recalibration_report:
@@ -242,7 +251,7 @@ rule R08_base_recalibration_report:
         output_dir = config['output_dir'])
     shell:
         """
-        /home/rstudio/tool_bin/gatk-4.0.8.1/gatk BaseRecalibrator \
+        /opt/gatk-4.0.8.1/gatk BaseRecalibrator \
         --reference {input.reference} \
         --input {input.bam} \
         --known-sites {input.known_1000g_indel_vcf} \
@@ -251,7 +260,8 @@ rule R08_base_recalibration_report:
          > {log} 2>&1 || (e=$?; cat {log}; exit $e)
         """
 rule R09_analyze_base_quality_covariates:
-    # log "GATK AnalyzeCovariates - Generating comparison of base score accuracy before & after recalibration"
+    # log "GATK AnalyzeCovariates - Generating comparison of base score
+    # accuracy before & after recalibration"
     # recalibration_plots="$output/$sample_dna_id.recal_plots.pdf"
     # "$JAVA" -d64 -Xmx8g -jar "$gatk_jar"
     #     -before "$recalibration_report" \
@@ -278,7 +288,7 @@ rule R09_analyze_base_quality_covariates:
                 output_dir = config['output_dir'])
     shell:
         """
-        /home/rstudio/tool_bin/gatk-4.0.8.1/gatk AnalyzeCovariates \
+        /opt/gatk-4.0.8.1/gatk AnalyzeCovariates \
         --before {input.recalibration_report} \
         --plots {output.recalibration_plots_pdf} \
          > {log} 2>&1 || (e=$?; cat {log}; exit $e)
@@ -314,7 +324,7 @@ rule R10_print_recalibrated_bam:
         output_dir = config['output_dir'])
     shell:
         """
-        /home/rstudio/tool_bin/gatk-4.0.8.1/gatk ApplyBQSR \
+        /opt/gatk-4.0.8.1/gatk ApplyBQSR \
         --reference {input.reference} \
         --input {input.deduped_bam} \
         --bqsr-recal-file {input.recalibration_report} \

@@ -5,8 +5,8 @@
 # RNA refine mapping
 # DNA bwa
 # DNA refine mapping
-# variant calling rules (use include)
 
+# variant calling rules (use include)
 # SNPir
 # RVBoost
 # Mutect2
@@ -20,11 +20,8 @@
 import sys
 import os
 
-configfile: "config.yaml"
-localrules:
-    all
-    #localrules means that it is not submitted to cluster but run on the
-    #current node
+configfile:
+    "config.yaml"
 include:
     "rules/alignments_DNA.py"
 rule VaDiR_summary_report:
